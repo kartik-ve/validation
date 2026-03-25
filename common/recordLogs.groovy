@@ -25,33 +25,40 @@ log.info "Feature ID  : ${featureId}"
 def ssh = { String remoteCmd ->
     def fullCmd = ["ssh", "${sshUser}@${sshHost}", remoteCmd]
     log.info "SSH >> ${remoteCmd}"
-
     def proc = fullCmd.execute()
 
-    def out = proc.inputStream.text?.trim()
-    def err = proc.errorStream.text?.trim()
+    // Consume streams in parallel to prevent buffer deadlock
+    def out = new StringBuilder()
+    def err = new StringBuilder()
+    def outThread = Thread.start { out << proc.inputStream.text }
+    def errThread = Thread.start { err << proc.errorStream.text }
 
     proc.waitFor()
-    
-    if (out) log.info  "stdout: ${out}"
-    if (err) log.warn  "stderr: ${err}"
+    outThread.join()
+    errThread.join()
+
+    def outStr = out.toString().trim()
+    def errStr = err.toString().trim()
+
+    if (outStr) log.info "stdout: ${outStr}"
+    if (errStr) log.warn "stderr: ${errStr}"
 
     if (proc.exitValue() != 0) {
         throw new RuntimeException(
             "SSH command failed (exit ${proc.exitValue()}): ${remoteCmd}"
         )
     }
-    return out
+    return outStr
 }
 
 // ─── 1. Kill any tail processes older than 6 hours ───────────────────────────
 ssh($/ps -eo pid,etimes,cmd | awk '$2 >= 21600 && $0 ~ /tail -fn 0 \/users\/gen\/omswrk1\/JEE\/OMS\/logs\/OmsDomain\/OmsServer\/weblogic/ {print $1}' | xargs -r kill/$)
 
-// ─── 2. Clean up workspace files older than 6 hours ──────────────────────────
-ssh("find ${omsWorkspace} -mindepth 1 -mmin +360 -exec rm -rf {} +")
-
-// ─── 3. (Re-)create the workspace directory ──────────────────────────────────
+// ─── 2. Create the workspace directory if not exists ──────────────────────────────────
 ssh("mkdir -p ${omsWorkspace}")
+
+// ─── 3. Clean up workspace files older than 6 hours ──────────────────────────
+ssh("find ${omsWorkspace} -mindepth 1 -mmin +360 -exec rm -rf {} +")
 
 // ─── 4. Start tailing the latest weblogic log into a feature-specific file ───
 def tailCmd = """
@@ -62,7 +69,7 @@ if [ -z "\${LATEST_WEBLOGIC}" ]; then
   exit 1
 fi
 
-nohup tail -fn 0 "\${LATEST_WEBLOGIC}" > ${omsWorkspace}/${featureId}.log 2>&1 < /dev/null &
+setsid nohup tail -fn 0 "\${LATEST_WEBLOGIC}" > ${omsWorkspace}/${featureId}.log 2>&1 < /dev/null &
 echo \$! > ${omsWorkspace}/${featureId}.pid
 """
 
