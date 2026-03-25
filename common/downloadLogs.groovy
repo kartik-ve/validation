@@ -20,23 +20,30 @@ def sshHost      = "illnqw${env}"
 def ssh = { String remoteCmd ->
     def fullCmd = ["ssh", "${sshUser}@${sshHost}", remoteCmd]
     log.info "SSH >> ${remoteCmd}"
-
     def proc = fullCmd.execute()
 
-    def out = proc.inputStream.text?.trim()
-    def err = proc.errorStream.text?.trim()
+    // Consume streams in parallel to prevent buffer deadlock
+    def out = new StringBuilder()
+    def err = new StringBuilder()
+    def outThread = Thread.start { out << proc.inputStream.text }
+    def errThread = Thread.start { err << proc.errorStream.text }
 
     proc.waitFor()
-    
-    if (out) log.info  "stdout: ${out}"
-    if (err) log.warn  "stderr: ${err}"
+    outThread.join()
+    errThread.join()
+
+    def outStr = out.toString().trim()
+    def errStr = err.toString().trim()
+
+    if (outStr) log.info "stdout: ${outStr}"
+    if (errStr) log.warn "stderr: ${errStr}"
 
     if (proc.exitValue() != 0) {
         throw new RuntimeException(
             "SSH command failed (exit ${proc.exitValue()}): ${remoteCmd}"
         )
     }
-    return out
+    return outStr
 }
 
 def scp = { String remotePath, String localPath ->
@@ -61,9 +68,9 @@ def scp = { String remotePath, String localPath ->
     return out
 }
 
-ssh("kill $(cat ${omsWorkspace}/${featureId}.pid) || true")
+ssh("kill \$(cat ${omsWorkspace}/${featureId}.pid) || true")
 
-def basePath = new File(project.path).parentFile.path
+def basePath = new File(context.testCase.testSuite.project.path).parentFile.path
 def errorDir = new File(basePath, "error_logs")
 
 if (!errorDir.exists()) {
@@ -75,3 +82,5 @@ def errorDirPath = errorDir.path
 scp("${omsWorkspace}/${featureId}.log", "${errorDirPath}")
 
 ssh("rm ${omsWorkspace}/*")
+
+log.info "Logs downloaded from ${sshHost} → ${errorDirPath}"
