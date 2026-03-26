@@ -1,38 +1,12 @@
-def project = testRunner.testCase.testSuite.project
-def activeEnv = project.activeEnvironment
-
-def endpoint = ""
-
-if (activeEnv?.name == "Default environment") {
-    endpoint = project.getPropertyValue("MecEndpoint") ?: ""
-    log.info "Using endpoint from project property (MecEndpoint)"
-} else {
-    def service = activeEnv.getRestServiceAt(0) ?: activeEnv.getSoapServiceAt(0)
-    endpoint = service?.getEndpoint()?.getEndpointString() ?: ""
-    log.info "Using endpoint from active environment"
-}
-
-if (!endpoint) {
-    throw new RuntimeException("Endpoint could not be resolved!")
-}
-
-def matcher = endpoint =~ /illnqw(\d+)/
-if (!matcher.find()) {
-    throw new RuntimeException(
-        "Cannot parse environment number from endpoint: '${endpoint}'. " +
-        "Expected format: 'http://illnqw<env_number>:<port>'"
-    )
-}
-
-def env          = matcher[0][1]
+def project      = testRunner.testCase.testSuite.project
+def env          = project.getPropertyValue("ENV")
 def featureId    = testRunner.testCase.testSuite.name
 def omsBase      = "/users/gen/omswrk1/JEE/OMS/logs/OmsDomain/OmsServer"
 def omsWorkspace = "${omsBase}/validation"
 def sshUser      = "omswrk1"
 def sshHost      = "illnqw${env}"
 
-log.info "Endpoint    : ${endpoint}"
-log.info "Environment : ${env}"
+log.info "ENV         : ${env}"
 log.info "Host        : ${sshHost}"
 log.info "Feature ID  : ${featureId}"
 
