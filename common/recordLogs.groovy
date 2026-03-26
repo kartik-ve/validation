@@ -3,7 +3,7 @@ def activeEnv = project.activeEnvironment
 
 def endpoint = ""
 
-if (activeEnv?.name == "DefaultEnvironment") {
+if (activeEnv?.name == "Default environment") {
     endpoint = project.getPropertyValue("MecEndpoint") ?: ""
     log.info "Using endpoint from project property (MecEndpoint)"
 } else {
