@@ -33,7 +33,6 @@ def ssh = { String remoteCmd ->
 
 def logDir = "/users/gen/omswrk1/JEE/OMS/logs/OmsDomain/OmsServer"
 def txnId = context.expand( '${Product-Configuration - Validate&Save - Other#Response#$[\'ImplProductConfigurationsResponse\'][\'transactionId\']}' )
-def endpoint = project.getPropertyValue("MecEndpoint")
 def orderId = context.expand( '${Create Order#Response#$[\'ImplCreateOrderResponse\'][\'implCreateOrderOutput\'][\'orderId\']}' )
 def searchPattern = ~/Changed LOBs for CO Order ID: ${orderId} = \[[A-Z]{2}\]/
 
