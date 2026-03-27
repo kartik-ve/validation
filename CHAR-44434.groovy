@@ -1,28 +1,60 @@
-def basePath = new File(context.testCase.testSuite.project.path).parentFile.path
-def errorDir = new File(basePath, "error_logs")
+def project = testRunner.testCase.testSuite.project
+def username = project.getPropertyValue("USER")
+def hostname = project.getPropertyValue("HOST")
 
-def featureId = testRunner.testCase.testSuite.name
+def ssh = { String remoteCmd ->
+    def fullCmd = ["ssh", "${username}@${hostname}", remoteCmd]
+    log.info "SSH >> ${remoteCmd}"
+    def proc = fullCmd.execute()
 
-def file = new File(errorDir, "${featureId}.log")
-def searchText = "isNpcActivityFound"
+    // Consume streams in parallel to prevent buffer deadlock
+    def out = new StringBuilder()
+    def err = new StringBuilder()
+    def outThread = Thread.start { out << proc.inputStream.text }
+    def errThread = Thread.start { err << proc.errorStream.text }
 
-if (!file.exists()) {
-    assert false : "File not found: ${file.path}"
+    proc.waitFor()
+    outThread.join()
+    errThread.join()
+
+    def outStr = out.toString().trim()
+    def errStr = err.toString().trim()
+
+    if (outStr) log.info "stdout: ${outStr}"
+    if (errStr) log.warn "stderr: ${errStr}"
+
+    if (proc.exitValue() != 0) {
+        throw new RuntimeException(
+            "SSH command failed (exit ${proc.exitValue()}): ${remoteCmd}"
+        )
+    }
+    return [outStr, errStr]
 }
 
-def found = false
+def logDir = "/users/gen/omswrk1/JEE/OMS/logs/OmsDomain/OmsServer"
+def orderId = context.expand( '${Create Order#Response#$[\'ImplCreateOrderResponse\'][\'implCreateOrderOutput\'][\'orderId\']}' )
+def searchPattern = "isNpcActivityFound"
 
-file.withReader { reader ->
-    String line
-    while ((line = reader.readLine()) != null) {
-        if (line.contains(searchText)) {
-            log.info "Found text: ${searchText}"
-            found = true
-            break
-        }
+int retries = 5
+int waitMs = 3000
+boolean found = false
+
+while (retries-- > 0 && !found) {
+    def command = "ls -t ${logDir}/weblogic*.log 2>/dev/null | head -1 | xargs -r grep '${searchPattern}'"
+    
+    def (logOutput, errorOutput) = ssh(command)
+    
+    if (errorOutput?.toLowerCase()?.contains("no such file")) {
+        assert false : "Invalid path: ${errorOutput}"
+    }
+
+    if (logOutput) {
+        found = true
+    } else {
+        log.info("Not found, retrying...")
+        sleep(waitMs)
     }
 }
 
-if (!found) {
-    throw new AssertionError("'${searchText}' not found in log file")
-}
+assert found : "'${searchPattern}' not found in logs"
+log.info("Validation passed!")
