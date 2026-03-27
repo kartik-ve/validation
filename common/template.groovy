@@ -41,7 +41,7 @@ int waitMs = 3000
 boolean found = false
 
 while (retries-- > 0 && !found) {
-    def command = "ls -t ${logDir}/weblogic*.log 2>/dev/null | head -1 | xargs grep '${txnId}'"
+    def command = "ls -t ${logDir}/weblogic*.log 2>/dev/null | head -1 | xargs -r grep '${txnId}'"
     
     def (logOutput, errorOutput) = ssh(command)
     
