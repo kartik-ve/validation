@@ -7,7 +7,6 @@ def ssh = { String remoteCmd ->
     log.info "SSH >> ${remoteCmd}"
     def proc = fullCmd.execute()
 
-    // Consume streams in parallel to prevent buffer deadlock
     def out = new StringBuilder()
     def err = new StringBuilder()
     def outThread = Thread.start { out << proc.inputStream.text }
