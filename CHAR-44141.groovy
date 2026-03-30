@@ -1,3 +1,25 @@
+// Validation 1: PC
+import groovy.json.JsonSlurper
+
+def stepName = "Product-Configuration - Validate&Save - Other"
+def response = context.expand("\${${stepName}#Response}")
+
+if (!response) {
+    log.error("No response found for step: ${stepName}")
+    assert false : "Empty response"
+}
+
+def json = new JsonSlurper().parseText(response)
+def changedLob = json?.ImplProductConfigurationsResponse?.changedLob
+
+if (changedLob instanceof List && !changedLob.isEmpty()) {
+    log.info("changedLob is present and has ${changedLob.size()} element(s)!")
+} else {
+    log.error("changedLob is missing or empty")
+    assert false : "changedLob not present or empty"
+}
+
+// Validation 2: Logs
 def project = testRunner.testCase.testSuite.project
 def username = project.getPropertyValue("USER")
 def hostname = project.getPropertyValue("HOST")
@@ -7,7 +29,6 @@ def ssh = { String remoteCmd ->
     log.info "SSH >> ${remoteCmd}"
     def proc = fullCmd.execute()
 
-    // Consume streams in parallel to prevent buffer deadlock
     def out = new StringBuilder()
     def err = new StringBuilder()
     def outThread = Thread.start { out << proc.inputStream.text }
