@@ -1,4 +1,14 @@
 def envConfig = [
+    "8285": [
+        hostname: "illnqw8285",
+        endpoint: "http://illnqw8285:11111",
+        jdbc: "jdbc:oracle:thin:OMS1OMS/OMS1OMS@illnqw8374:1521:CHCDB8285"
+    ],
+    "8289": [
+        hostname: "illnqw8289",
+        endpoint: "http://illnqw8289:11111",
+        jdbc: "jdbc:oracle:thin:OMS1OMS/OMS1OMS@illnqw8377:1521:CHCDB8289"
+    ],
     "8342": [
         hostname: "illnqw8342",
         endpoint: "http://illnqw8342:11111",
