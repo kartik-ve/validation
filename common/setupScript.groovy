@@ -67,7 +67,7 @@ def envConfig = [
     "PLAB": [
         hostname: "mwhlvchcaamc101",
         endpoint: "https://plab-oe-omni.amdocs.spectrum.com",
-        jdbc: "jdbc:oracle:thin:CHCOMS/chc_4c0nn@chcplscn1:1521/CHCOMS1"
+        jdbc: "jdbc:oracle:thin:CHCOMS/chc_4c0nn@chcplscn1:1521/chcomspl1"
     ]
 ]
 
